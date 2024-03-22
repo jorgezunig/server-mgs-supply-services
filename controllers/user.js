@@ -1,6 +1,5 @@
 import { User } from "../models/index.js";
-
-
+import { ETQ_LOG } from "../utils/constants.js";
 
 /**
  * Obtiene la información del usuario mediante el token
@@ -18,13 +17,13 @@ async function getMe(req, resp) {
         const response = await User.findById(user_id).select("-password");
 
         if (!response) {
-            resp.status(404).send({ msg: "No se encontro al usuario" });
+            resp.status(404).send({ module: "USER", message: "user not found" });
         }
 
         resp.status(200).send(response);
     }
     catch (e) {
-        resp.status(400).send({ msg: "Error en peticion" });
+        resp.status(500).send({ module: "USER", message: "error" });
     }
 }
 
@@ -44,12 +43,12 @@ async function getUsers(req, resp) {
         const users = await User.find({ _id: { $ne: user_id } }).select("-password");
 
         if (!users) {
-            resp.status(404).send({ msg: "No se encontro usuarios" });
+            resp.status(404).send({ module: "USER", message: "No active users found" });
         }
 
         resp.status(200).send(users);
     } catch (e) {
-        resp.status(404).send({ msg: "No se encontro usuarios" });
+        resp.status(500).send({ module: "USER", message: "error" });
     }
 
 
@@ -71,13 +70,13 @@ async function getUserById(req, resp) {
         const user = await User.findById(id).select(["-password"]);
 
         if (!user) {
-            resp.status(404).send({ msg: "No se encontro usuario" });
+            resp.status(404).send({ module:"USER", msg: "user not found" });
         }
 
         resp.status(200).send(user);
 
     } catch (e) {
-        resp.status(404).send({ msg: "No se encontro usuario" });
+        resp.status(500).send({ module: "USER", message: "error" });
     }
 }
 
@@ -100,13 +99,13 @@ async function updateUser(req, resp) {
         const response = await User.findByIdAndUpdate({ _id: user_id }, userData).select("-password");
 
         if (!response) {
-            resp.status(404).send({msg:"Usuario no existe"});
+            resp.status(404).send({"module":"USER","msg":"user not found"});
         }
 
         resp.status(200).send(response);
 
     } catch (e) {
-        resp.status(404).send({msg:"Usuario no existe"}); 
+        resp.status(500).send({module:"USER",msg:"error"}); 
     }
 
 

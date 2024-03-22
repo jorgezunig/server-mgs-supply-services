@@ -1,6 +1,8 @@
 import { User } from "../models/index.js";
-import bscrypt from "bcryptjs";
+import bcrypt from "bcryptjs";
 import { token } from "../utils/index.js";
+import { REQUIRED_USER_FIELDS } from "../utils/constants.js";
+import { ETQ_LOG } from "../utils/constants.js";
 
 
 /**
@@ -12,25 +14,28 @@ import { token } from "../utils/index.js";
  * @returns User 
  */
 function register(req, res) {
-    const { email, password } = req.body;
 
-    const user = new User({
-        email: email.toLowerCase()
+    const userData = {};
+
+    REQUIRED_USER_FIELDS.forEach(field => {
+        if (req.body[field.name]) {
+            userData[field.name] = field.name === 'email' ? req.body[field.name].toLowerCase() : req.body[field.name];
+        }
     });
 
-    const salt = bscrypt.genSaltSync(10);
-    const hashPassword = bscrypt.hashSync(password, salt);
-    user.password = hashPassword;
+    const salt = bcrypt.genSaltSync(10);
+    const hashPassword = bcrypt.hashSync(req.body.password, salt);
+    userData.password = hashPassword;
 
+    const user = new User(userData);
 
     user.save()
         .then(response => {
             res.status(201).send({ msg: user });
         })
         .catch(error => {
-            res.status(400).send({ msg: "Error al registrar el usuario" })
+            res.status(400).send({ module: "AUTH", msg: "Error registering new user" });
         });
-
 }
 
 /**
@@ -50,13 +55,13 @@ function login(req, res) {
     User.findOne({ email: emailLower })
         .then((user) => {
             if (!user) {
-                return res.status(400).send({ msg: "Error de credenciales" });
+                return res.status(400).send({ module: "AUTH", msg: "Credentials error" });
             }
 
-            bscrypt.compare(password, user.password, (err, result) => {
+            bcrypt.compare(password, user.password, (err, result) => {
                 if (err) {
                     console.error("Error al comparar contraseñas:", err);
-                    return res.status(400).send({ msg: "No Autorizado" });
+                    return res.status(400).send({ module: "AUTH", msg: "No Authorized" });
                 }
 
                 if (result) {
@@ -65,13 +70,13 @@ function login(req, res) {
                         refresh: token.createRefreshToken(user)
                     });
                 } else {
-                    return res.status(400).send({ msg: "No Autorizado" });
+                    return res.status(400).send({ module: "AUTH", msg: "No Authorized" });
                 }
             });
         })
         .catch((error) => {
-            console.error("Error al buscar usuario:", error);
-            res.status(400).send({ msg: "No Autorizado" });
+            console.error(ETQ_LOG, "login", "error al buscar usuario");
+            res.status(500).send({ module: "AUTH", msg: "error" });
         });
 }
 
@@ -88,31 +93,29 @@ function refreshAccessToken(req, res) {
     const { refreshToken } = req.body;
 
     if (!refreshToken) {
-        return res.status(400).send({ msg: "Token Requerido" });
+        return res.status(400).send({ module: "AUTH", msg: "refresh token required" });
     }
 
     const hasExpired = token.hasExpiredToken(refreshToken);
 
     if (hasExpired) {
-        return res.status(400).send({ msg: "Token expirado" });
+        return res.status(400).send({ module: "AUTH", msg: "Expired Token" });
     }
 
     const { user_id } = token.decode(refreshToken);
 
     User.findById(user_id)
         .then((user) => {
+            
             if (!user) {
-                return res.status(404).send({ msg: "Usuario no encontrado" });
+                return res.status(404).send({ module: "AUTH", msg: "user not found" });
             }
-            res.status(200).send(
-              {
-                access: token.createAccessToken(user)
-              }                
-            );
+
+            res.status(200).send({access: token.createAccessToken(user)});
         })
         .catch((error) => {
-            console.error("Error al buscar usuario:", error);
-            res.status(500).send({ msg: "Error interno del servidor" });
+            console.error(ETQ_LOG, "refreshAccessToken", "error al buscar usuario");
+            res.status(500).send({ module: "AUTH", msg: "Error" });
         });
 
 }

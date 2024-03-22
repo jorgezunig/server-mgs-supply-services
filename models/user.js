@@ -1,15 +1,17 @@
 import mongoose from "mongoose";
 
-const UserSchema = mongoose.Schema({
+import { REQUIRED_USER_FIELDS } from "../utils/constants.js";
 
-    email:{
-        type: String,
-        unique: true
-    },
-    firstname: String,
-    lastname: String,
-    password: String,
-    avatar: String
-})
+const UserSchema = mongoose.Schema({});
 
-export const User = mongoose.model("User",UserSchema);
+REQUIRED_USER_FIELDS.forEach(field => {
+    const fieldOptions = { type: String };
+    if (field.options !== undefined) {
+        Object.assign(fieldOptions, field.options);
+    }
+    UserSchema.add({
+        [field.name]: fieldOptions
+    });
+});
+
+export const User = mongoose.model("User", UserSchema);
