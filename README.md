@@ -1,2 +1,3 @@
-# app-servidor-node
-App Servidor
+# mgs-supply-services
+
+RUN  yarn start 
